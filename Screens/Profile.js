@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, ScrollView, Switch, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CommonActions } from '@react-navigation/native';
 
 export default function ProfileScreen({ navigation }) {
   const [firstName, setFirstName] = useState('');
@@ -33,24 +34,29 @@ export default function ProfileScreen({ navigation }) {
 
   const handleLogout = async () => {
     try {
-      // Clear onboarding status
-      await AsyncStorage.removeItem('onboardingCompleted');
+      // Clear all data from AsyncStorage
+      await AsyncStorage.clear();
       
-      // Navigate back to onboarding
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Onboarding' }],
-      });
+      // Navigate back to onboarding using CommonActions to avoid navigation issues
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Onboarding' }],
+        })
+      );
     } catch (e) {
       console.error('Error during logout:', e);
+      Alert.alert('Error', 'Failed to log out. Please try again.');
     }
   };
 
   const handleSaveChanges = async () => {
     try {
-      await AsyncStorage.setItem('firstName', firstName);
-      await AsyncStorage.setItem('lastName', lastName);
-      await AsyncStorage.setItem('email', email);
+      await AsyncStorage.multiSet([
+        ['firstName', firstName],
+        ['lastName', lastName],
+        ['email', email]
+      ]);
       
       Alert.alert(
         'Success',
@@ -70,11 +76,17 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
         <Image 
           source={require('../assets/logo.png')} 
           style={styles.logo} 
           resizeMode="contain"
         />
+        <View style={styles.placeholder} />
       </View>
 
       <View style={styles.section}>
@@ -161,7 +173,7 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity 
           style={[styles.button, styles.logoutButton]} 
           onPress={handleLogout}>
-          <Text style={styles.buttonText}>Log out</Text>
+          <Text style={[styles.buttonText, styles.logoutButtonText]}>Log out</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -175,11 +187,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
+  },
+  backButton: {
+    padding: 8,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#495E57',
+  },
+  placeholder: {
+    width: 70, // Match width of back button for center alignment
   },
   logo: {
     height: 40,
@@ -235,5 +258,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     color: '#FFFFFF',
+  },
+  logoutButtonText: {
+    color: '#333333',
   },
 });

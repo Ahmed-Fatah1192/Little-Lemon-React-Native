@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function OnboardingScreen({ navigation }) {
@@ -34,16 +34,18 @@ export default function OnboardingScreen({ navigation }) {
   const handleSubmit = async () => {
     try {
       // Save user data
-      await AsyncStorage.setItem('firstName', firstName);
-      await AsyncStorage.setItem('lastName', lastName);
-      await AsyncStorage.setItem('email', email);
-      await AsyncStorage.setItem('onboardingCompleted', 'true');
+      await AsyncStorage.multiSet([
+        ['firstName', firstName],
+        ['lastName', lastName],
+        ['email', email],
+        ['onboardingCompleted', 'true']
+      ]);
       
       // Navigate to home screen
-      navigation.navigate('Home');
-
+      navigation.replace('Home');
     } catch (e) {
       console.error('Error saving onboarding data:', e);
+      Alert.alert('Error', 'Failed to save user data. Please try again.');
     }
   };
 
@@ -113,6 +115,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 40,
   },
   logo: {
     height: 50,

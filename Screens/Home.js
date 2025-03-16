@@ -7,8 +7,10 @@ import { fetchMenuItems, getImageUrl } from '../utils/api';
 
 export default function HomeScreen({ navigation }) {
   const [menuItems, setMenuItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -23,16 +25,19 @@ export default function HomeScreen({ navigation }) {
           if (storedItems.length > 0) {
             // Use stored items if available
             setMenuItems(storedItems);
+            setFilteredItems(storedItems);
           } else {
             // Fetch from API if no stored items
             const menuData = await fetchMenuItems();
             await saveMenuItems(menuData);
             setMenuItems(menuData);
+            setFilteredItems(menuData);
           }
         } else {
           // If database fails, just fetch from API
           const menuData = await fetchMenuItems();
           setMenuItems(menuData);
+          setFilteredItems(menuData);
         }
       } catch (error) {
         console.error('Error loading menu data:', error);
@@ -40,6 +45,7 @@ export default function HomeScreen({ navigation }) {
           // Fallback to API if anything fails
           const menuData = await fetchMenuItems();
           setMenuItems(menuData);
+          setFilteredItems(menuData);
         } catch (apiError) {
           console.error('Even API fetch failed:', apiError);
         }
@@ -51,7 +57,37 @@ export default function HomeScreen({ navigation }) {
     loadData();
   }, []);
 
-  // Rest of the component remains the same
+  // Apply search and category filters
+  useEffect(() => {
+    let results = [...menuItems];
+    
+    // Apply search filter
+    if (searchQuery) {
+      results = results.filter(item => 
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // Apply category filter
+    if (selectedCategory) {
+      results = results.filter(item => 
+        item.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+    
+    setFilteredItems(results);
+  }, [searchQuery, selectedCategory, menuItems]);
+
+  const handleCategoryPress = (category) => {
+    // If the same category is selected, clear the filter
+    if (category.toLowerCase() === selectedCategory.toLowerCase()) {
+      setSelectedCategory('');
+    } else {
+      setSelectedCategory(category);
+    }
+  };
+
   const renderMenuItem = ({ item }) => {
     const imageUrl = getImageUrl(item.image);
     
@@ -64,7 +100,11 @@ export default function HomeScreen({ navigation }) {
           </Text>
           <Text style={styles.menuItemPrice}>${item.price.toFixed(2)}</Text>
         </View>
-        <Image source={{ uri: imageUrl }} style={styles.menuItemImage} />
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.menuItemImage} 
+          defaultSource={require('../assets/placeholder.png')}
+        />
       </View>
     );
   };
@@ -78,7 +118,11 @@ export default function HomeScreen({ navigation }) {
           style={styles.logo} 
           resizeMode="contain"
         />
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Profile')}
+          accessible={true}
+          accessibilityLabel="Profile"
+          accessibilityHint="Navigate to your profile page">
           <Image 
             source={require('../assets/profile.png')} 
             style={styles.avatar} 
@@ -119,17 +163,49 @@ export default function HomeScreen({ navigation }) {
       
       {/* Categories */}
       <View style={styles.categories}>
-        <TouchableOpacity style={styles.categoryButton}>
-          <Text style={styles.categoryText}>Starters</Text>
+        <TouchableOpacity 
+          style={[
+            styles.categoryButton,
+            selectedCategory === 'starters' && styles.selectedCategoryButton
+          ]}
+          onPress={() => handleCategoryPress('starters')}>
+          <Text style={[
+            styles.categoryText,
+            selectedCategory === 'starters' && styles.selectedCategoryText
+          ]}>Starters</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.categoryButton}>
-          <Text style={styles.categoryText}>Mains</Text>
+        <TouchableOpacity 
+          style={[
+            styles.categoryButton,
+            selectedCategory === 'mains' && styles.selectedCategoryButton
+          ]}
+          onPress={() => handleCategoryPress('mains')}>
+          <Text style={[
+            styles.categoryText,
+            selectedCategory === 'mains' && styles.selectedCategoryText
+          ]}>Mains</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.categoryButton}>
-          <Text style={styles.categoryText}>Desserts</Text>
+        <TouchableOpacity 
+          style={[
+            styles.categoryButton,
+            selectedCategory === 'desserts' && styles.selectedCategoryButton
+          ]}
+          onPress={() => handleCategoryPress('desserts')}>
+          <Text style={[
+            styles.categoryText,
+            selectedCategory === 'desserts' && styles.selectedCategoryText
+          ]}>Desserts</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.categoryButton}>
-          <Text style={styles.categoryText}>Drinks</Text>
+        <TouchableOpacity 
+          style={[
+            styles.categoryButton,
+            selectedCategory === 'drinks' && styles.selectedCategoryButton
+          ]}
+          onPress={() => handleCategoryPress('drinks')}>
+          <Text style={[
+            styles.categoryText,
+            selectedCategory === 'drinks' && styles.selectedCategoryText
+          ]}>Drinks</Text>
         </TouchableOpacity>
       </View>
 
