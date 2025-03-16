@@ -13,60 +13,48 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Initialize database
-        const dbInitialized = await initDatabase();
-        
-        if (dbInitialized) {
-          // Try to load menu items from database first
-          const storedItems = await getMenuItems();
-          
-          if (storedItems && storedItems.length > 0) {
-            console.log('Using stored items from database');
-            setMenuItems(storedItems);
-            setFilteredItems(storedItems);
-          } else {
-            console.log('Fetching from API');
-            // Fetch from API if no stored items
-            const menuData = await fetchMenuItems();
-            
-            // Process the data to ensure each item has a category
-            const processedData = menuData.map(item => ({
-              ...item,
-              category: item.category || 'mains' // Default category
-            }));
-            
-            // Save to database
-            await saveMenuItems(processedData);
-            
-            setMenuItems(processedData);
-            setFilteredItems(processedData);
-          }
-        } else {
-          // If database fails, just fetch from API
-          console.log('Database initialization failed, using API only');
-          const menuData = await fetchMenuItems();
-          
-          // Process the data to ensure each item has a category
-          const processedData = menuData.map(item => ({
-            ...item,
-            category: item.category || 'mains' // Default category
-          }));
-          
-          setMenuItems(processedData);
-          setFilteredItems(processedData);
-        }
-      } catch (error) {
-        console.error('Error loading menu data:', error);
-        Alert.alert(
-          'Data Loading Error',
-          'Could not load menu items. Please try again.'
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // In screens/Home.js - Update the loadData function in useEffect
+const loadData = async () => {
+  try {
+    // Skip the database initialization for now to simplify debugging
+    console.log('Fetching menu items directly from API');
+    const menuData = await fetchMenuItems();
+    
+    if (!menuData || menuData.length === 0) {
+      console.error('No menu data received from API');
+      return;
+    }
+    
+    console.log(`Received ${menuData.length} menu items`);
+    
+    // Process the data to ensure each item has all required properties
+    const processedData = menuData.map(item => {
+      // Log each item to help with debugging
+      console.log(`Processing item: ${item.name}, price: ${item.price}, image: ${item.image}`);
+      
+      return {
+        ...item,
+        // Ensure all required properties exist
+        name: item.name || 'Unknown Item',
+        price: item.price || 0,
+        description: item.description || 'No description available',
+        image: item.image || null,
+        category: item.category || 'mains'
+      };
+    });
+    
+    setMenuItems(processedData);
+    setFilteredItems(processedData);
+  } catch (error) {
+    console.error('Error loading menu data:', error);
+    Alert.alert(
+      'Data Loading Error',
+      'Could not load menu items. Please try again.'
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
 
     loadData();
   }, []);
@@ -105,29 +93,40 @@ export default function HomeScreen({ navigation }) {
   };
 
   const renderMenuItem = ({ item }) => {
-    if (!item) return null; // Skip rendering if item is null
+    if (!item) return null;
     
-    const imageUrl = getImageUrl(item.image);
+    // Check if necessary properties exist
+    const name = item.name || 'Unknown Item';
+    const description = item.description || 'No description available';
+    const price = typeof item.price === 'number' ? item.price : 0;
+    
+    // Log item details for debugging
+    console.log(`Rendering ${name}, price: ${price}, image: ${item.image}`);
+    
+    // Get image URL
+    const imageUrl = item.image 
+      ? getImageUrl(item.image) 
+      : 'https://via.placeholder.com/100?text=No+Image';
     
     return (
       <View style={styles.menuItem}>
         <View style={styles.menuItemContent}>
-          <Text style={styles.menuItemTitle}>{item.name}</Text>
+          <Text style={styles.menuItemTitle}>{name}</Text>
           <Text style={styles.menuItemDescription} numberOfLines={2}>
-            {item.description || 'No description available'}
+            {description}
           </Text>
-          <Text style={styles.menuItemPrice}>${parseFloat(item.price).toFixed(2)}</Text>
+          <Text style={styles.menuItemPrice}>${parseFloat(price).toFixed(2)}</Text>
         </View>
         <Image 
           source={{ uri: imageUrl }} 
           style={styles.menuItemImage} 
-          // Fallback for image loading errors
-          onError={(e) => console.log('Image loading error', e.nativeEvent.error)}
+          onError={(e) => {
+            console.log(`Image error for ${name}:`, e.nativeEvent.error);
+          }}
         />
       </View>
     );
   };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -173,6 +172,9 @@ export default function HomeScreen({ navigation }) {
             inputContainerStyle={styles.searchBarInputContainer}
             round
             lightTheme
+            // Add these props to suppress the warning
+            iconProps={{ keyboardShouldPersistTaps: "always" }}
+            showLoading={false}
           />
         </View>
       </View>
