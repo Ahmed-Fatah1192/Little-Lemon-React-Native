@@ -14,22 +14,35 @@ export default function HomeScreen({ navigation }) {
     const loadData = async () => {
       try {
         // Initialize database
-        await initDatabase();
+        const dbInitialized = await initDatabase();
         
-        // Try to load menu items from database first
-        const storedItems = await getMenuItems();
-        
-        if (storedItems.length > 0) {
-          // Use stored items if available
-          setMenuItems(storedItems);
+        if (dbInitialized) {
+          // Try to load menu items from database first
+          const storedItems = await getMenuItems();
+          
+          if (storedItems.length > 0) {
+            // Use stored items if available
+            setMenuItems(storedItems);
+          } else {
+            // Fetch from API if no stored items
+            const menuData = await fetchMenuItems();
+            await saveMenuItems(menuData);
+            setMenuItems(menuData);
+          }
         } else {
-          // Fetch from API if no stored items
+          // If database fails, just fetch from API
           const menuData = await fetchMenuItems();
-          await saveMenuItems(menuData);
           setMenuItems(menuData);
         }
       } catch (error) {
         console.error('Error loading menu data:', error);
+        try {
+          // Fallback to API if anything fails
+          const menuData = await fetchMenuItems();
+          setMenuItems(menuData);
+        } catch (apiError) {
+          console.error('Even API fetch failed:', apiError);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -38,6 +51,7 @@ export default function HomeScreen({ navigation }) {
     loadData();
   }, []);
 
+  // Rest of the component remains the same
   const renderMenuItem = ({ item }) => {
     const imageUrl = getImageUrl(item.image);
     

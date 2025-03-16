@@ -1,4 +1,3 @@
-// utils/api.js
 const API_URL = 'https://raw.githubusercontent.com/Meta-Mobile-Developer-PC/Working-With-Data-API/main/capstone.json';
 
 export const fetchMenuItems = async () => {
