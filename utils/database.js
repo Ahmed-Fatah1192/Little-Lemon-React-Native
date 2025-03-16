@@ -23,7 +23,7 @@ export const initDatabase = async () => {
         price REAL, 
         description TEXT, 
         image TEXT, 
-        category TEXT
+        category TEXT DEFAULT 'mains'
       )
     `);
     return true;
@@ -43,9 +43,12 @@ export const saveMenuItems = async (menuItems) => {
     
     // Insert new menu items
     for (const item of menuItems) {
+      // Add a default category if none exists
+      const category = item.category || 'mains';
+      
       await db.execAsync(
         'INSERT INTO menu (name, price, description, image, category) VALUES (?, ?, ?, ?, ?)',
-        [item.name, item.price, item.description, item.image, item.category]
+        [item.name, item.price, item.description, item.image, category]
       );
     }
     return true;

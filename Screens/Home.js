@@ -1,6 +1,6 @@
 // screens/Home.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SearchBar } from 'react-native-elements';
 import { initDatabase, saveMenuItems, getMenuItems } from '../utils/database';
 import { fetchMenuItems, getImageUrl } from '../utils/api';
@@ -22,33 +22,47 @@ export default function HomeScreen({ navigation }) {
           // Try to load menu items from database first
           const storedItems = await getMenuItems();
           
-          if (storedItems.length > 0) {
-            // Use stored items if available
+          if (storedItems && storedItems.length > 0) {
+            console.log('Using stored items from database');
             setMenuItems(storedItems);
             setFilteredItems(storedItems);
           } else {
+            console.log('Fetching from API');
             // Fetch from API if no stored items
             const menuData = await fetchMenuItems();
-            await saveMenuItems(menuData);
-            setMenuItems(menuData);
-            setFilteredItems(menuData);
+            
+            // Process the data to ensure each item has a category
+            const processedData = menuData.map(item => ({
+              ...item,
+              category: item.category || 'mains' // Default category
+            }));
+            
+            // Save to database
+            await saveMenuItems(processedData);
+            
+            setMenuItems(processedData);
+            setFilteredItems(processedData);
           }
         } else {
           // If database fails, just fetch from API
+          console.log('Database initialization failed, using API only');
           const menuData = await fetchMenuItems();
-          setMenuItems(menuData);
-          setFilteredItems(menuData);
+          
+          // Process the data to ensure each item has a category
+          const processedData = menuData.map(item => ({
+            ...item,
+            category: item.category || 'mains' // Default category
+          }));
+          
+          setMenuItems(processedData);
+          setFilteredItems(processedData);
         }
       } catch (error) {
         console.error('Error loading menu data:', error);
-        try {
-          // Fallback to API if anything fails
-          const menuData = await fetchMenuItems();
-          setMenuItems(menuData);
-          setFilteredItems(menuData);
-        } catch (apiError) {
-          console.error('Even API fetch failed:', apiError);
-        }
+        Alert.alert(
+          'Data Loading Error',
+          'Could not load menu items. Please try again.'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -59,20 +73,22 @@ export default function HomeScreen({ navigation }) {
 
   // Apply search and category filters
   useEffect(() => {
+    if (menuItems.length === 0) return;
+    
     let results = [...menuItems];
     
     // Apply search filter
     if (searchQuery) {
       results = results.filter(item => 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
     
     // Apply category filter
     if (selectedCategory) {
       results = results.filter(item => 
-        item.category.toLowerCase() === selectedCategory.toLowerCase()
+        item.category && item.category.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
     
@@ -89,6 +105,8 @@ export default function HomeScreen({ navigation }) {
   };
 
   const renderMenuItem = ({ item }) => {
+    if (!item) return null; // Skip rendering if item is null
+    
     const imageUrl = getImageUrl(item.image);
     
     return (
@@ -96,14 +114,15 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.menuItemContent}>
           <Text style={styles.menuItemTitle}>{item.name}</Text>
           <Text style={styles.menuItemDescription} numberOfLines={2}>
-            {item.description}
+            {item.description || 'No description available'}
           </Text>
-          <Text style={styles.menuItemPrice}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.menuItemPrice}>${parseFloat(item.price).toFixed(2)}</Text>
         </View>
         <Image 
           source={{ uri: imageUrl }} 
           style={styles.menuItemImage} 
-          defaultSource={require('../assets/placeholder.png')}
+          // Fallback for image loading errors
+          onError={(e) => console.log('Image loading error', e.nativeEvent.error)}
         />
       </View>
     );
@@ -212,15 +231,19 @@ export default function HomeScreen({ navigation }) {
       {/* Menu Items */}
       {isLoading ? (
         <ActivityIndicator size="large" color="#495E57" style={styles.loader} />
-      ) : (
+      ) : filteredItems.length > 0 ? (
         <FlatList
-          data={menuItems}
+          data={filteredItems}
           renderItem={renderMenuItem}
-          keyExtractor={(item) => item.name}
+          keyExtractor={(item, index) => item ? `${item.name}-${index}` : `item-${index}`}
           style={styles.menuList}
           contentContainerStyle={styles.menuListContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
+      ) : (
+        <View style={styles.noResults}>
+          <Text style={styles.noResultsText}>No menu items found</Text>
+        </View>
       )}
     </View>
   );
@@ -313,8 +336,14 @@ const styles = StyleSheet.create({
     minWidth: 80,
     alignItems: 'center',
   },
+  selectedCategoryButton: {
+    backgroundColor: '#495E57',
+  },
   categoryText: {
     fontWeight: '600',
+  },
+  selectedCategoryText: {
+    color: '#FFFFFF',
   },
   loader: {
     marginTop: 50,
