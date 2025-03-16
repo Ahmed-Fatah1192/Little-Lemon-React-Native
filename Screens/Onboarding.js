@@ -40,10 +40,8 @@ export default function OnboardingScreen({ navigation }) {
       await AsyncStorage.setItem('onboardingCompleted', 'true');
       
       // Navigate to home screen
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
+      navigation.navigate('Home');
+
     } catch (e) {
       console.error('Error saving onboarding data:', e);
     }
